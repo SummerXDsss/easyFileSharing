@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin - Easy File Sharing</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <section class="login-wrap" id="login-view">
+      <form class="form-panel login-box" id="login-form">
+        <h2>管理员登录</h2>
+        <div class="field">
+          <label for="username">用户名</label>
+          <input id="username" autocomplete="username" value="admin" required>
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="error" id="login-error"></div>
+        <button class="button" type="submit" style="width: 100%;">登录</button>
+      </form>
+    </section>
+
+    <main class="shell hidden" id="admin-view">
+      <header class="topbar">
+        <div class="brand">
+          <h1>下载站管理</h1>
+          <div class="subtitle">配置站点、管理文件、控制链接策略与邀请码</div>
+        </div>
+        <div class="actions" style="margin: 0;">
+          <a class="button secondary" href="/">前台</a>
+          <button class="button danger" id="logout">退出</button>
+        </div>
+      </header>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="files">文件管理</button>
+        <button class="tab" data-tab="config">站点配置</button>
+        <button class="tab" data-tab="rules">密码规则</button>
+        <button class="tab" data-tab="invites">邀请码</button>
+        <button class="tab" data-tab="logs">下载记录</button>
+        <button class="tab" data-tab="git">Git</button>
+        <button class="tab" data-tab="password">修改密码</button>
+      </div>
+
+      <section id="files-tab">
+        <section class="toolbar">
+          <nav class="crumbs" id="admin-crumbs"></nav>
+          <form id="upload-form" class="actions" style="margin: 0;">
+            <input id="upload-file" type="file" required>
+            <input id="upload-note" placeholder="备注">
+            <button class="button" type="submit">上传</button>
+          </form>
+        </section>
+        <section class="panel">
+          <table>
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>备注</th>
+                <th>模式</th>
+                <th>登录</th>
+                <th class="size">大小</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-file-list"></tbody>
+          </table>
+        </section>
+        <div class="error" id="file-error"></div>
+      </section>
+
+      <section id="config-tab" class="admin-grid hidden">
+        <form class="form-panel" id="config-form">
+          <h2>站点配置</h2>
+          <div class="field">
+            <label for="site-title-input">站点名称</label>
+            <input id="site-title-input">
+          </div>
+          <div class="field">
+            <label for="site-logo-input">Logo URL</label>
+            <input id="site-logo-input" placeholder="/logo.png 或 https://...">
+          </div>
+          <div class="field">
+            <label for="default-link-mode">默认链接模式</label>
+            <select id="default-link-mode">
+              <option value="static">静态直链</option>
+              <option value="dynamic">动态 Token 链接</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="allowed-origins">允许 Origin，逗号分隔</label>
+            <input id="allowed-origins" placeholder="https://example.com,http://localhost:3000">
+          </div>
+          <div class="field">
+            <label><input id="require-origin" type="checkbox"> 无 Origin/Referer 时也拒绝</label>
+          </div>
+          <div class="error" id="config-error"></div>
+          <button class="button" type="submit">保存配置</button>
+        </form>
+      </section>
+
+      <section id="rules-tab" class="admin-grid hidden">
+        <form class="form-panel" id="rule-form">
+          <h2>添加 / 更新保护</h2>
+          <div class="field"><label for="rule-path">文件路径</label><input id="rule-path" placeholder="/releases/app.zip" required></div>
+          <div class="field"><label for="rule-password">下载密码</label><input id="rule-password" type="password" required></div>
+          <div class="field"><label for="rule-note">备注</label><input id="rule-note"></div>
+          <div class="field"><label for="rule-enabled">状态</label><select id="rule-enabled"><option value="1">启用</option><option value="0">停用</option></select></div>
+          <div class="error" id="rule-error"></div>
+          <button class="button" type="submit">保存规则</button>
+        </form>
+        <section class="panel"><table><thead><tr><th>路径</th><th>备注</th><th>状态</th><th>操作</th></tr></thead><tbody id="rules-list"></tbody></table></section>
+      </section>
+
+      <section id="invites-tab" class="admin-grid hidden">
+        <form class="form-panel" id="invite-form">
+          <h2>创建邀请码</h2>
+          <div class="field"><label for="invite-code">邀请码，可留空自动生成</label><input id="invite-code"></div>
+          <div class="error" id="invite-error"></div>
+          <button class="button" type="submit">创建</button>
+        </form>
+        <section class="panel"><table><thead><tr><th>邀请码</th><th>使用者</th><th>使用时间</th><th>创建时间</th></tr></thead><tbody id="invites-list"></tbody></table></section>
+      </section>
+
+      <section id="logs-tab" class="panel hidden">
+        <table><thead><tr><th>路径</th><th>IP</th><th>保护</th><th>用户</th><th class="time">时间</th></tr></thead><tbody id="logs-list"></tbody></table>
+      </section>
+
+      <section id="git-tab" class="admin-grid hidden">
+        <form class="form-panel" id="git-form">
+          <h2>Git 管理 storage</h2>
+          <div class="field"><label for="git-message">提交信息</label><input id="git-message" placeholder="Update files"></div>
+          <div class="actions" style="justify-content: flex-start;">
+            <button class="button secondary" type="button" data-git="init">init</button>
+            <button class="button secondary" type="button" data-git="pull">pull</button>
+            <button class="button secondary" type="button" data-git="commit">commit</button>
+            <button class="button secondary" type="button" data-git="push">push</button>
+            <button class="button secondary" type="button" data-git="log">log</button>
+          </div>
+        </form>
+        <pre class="form-panel" id="git-output">ENABLE_ADMIN_GIT=true 后启用。</pre>
+      </section>
+
+      <section id="password-tab" class="admin-grid hidden">
+        <form class="form-panel" id="password-form">
+          <h2>修改管理员密码</h2>
+          <div class="field"><label for="current-password">当前密码</label><input id="current-password" type="password" required></div>
+          <div class="field"><label for="new-password">新密码</label><input id="new-password" type="password" minlength="8" required></div>
+          <div class="error" id="password-error"></div>
+          <button class="button" type="submit">修改密码</button>
+        </form>
+      </section>
+    </main>
+
+    <script src="/admin.js?v=20260617-3"></script>
+  </body>
+</html>

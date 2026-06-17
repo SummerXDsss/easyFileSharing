@@ -1,0 +1,6 @@
+node_modules
+data
+.git
+.playwright-mcp
+.superpowers
+npm-debug.log

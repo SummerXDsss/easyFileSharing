@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mirror Download</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="site-nav">
+      <a class="site-brand" href="/">
+        <img id="site-logo" class="site-logo hidden" alt="">
+        <span id="site-title">Mirror Download</span>
+      </a>
+      <nav class="nav-links">
+        <button class="nav-link active" data-view="files">文件下载</button>
+        <button class="nav-link" data-view="images">图片分享中心</button>
+      </nav>
+      <div class="nav-auth" id="auth-area">
+        <button class="button secondary" id="login-open">登录</button>
+        <button class="button" id="register-open">注册</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section id="files-view">
+        <section class="toolbar">
+          <nav class="crumbs" id="crumbs"></nav>
+          <input id="search" class="search" type="search" placeholder="过滤当前目录">
+        </section>
+
+        <section class="panel">
+          <table>
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>备注</th>
+                <th>上传者</th>
+                <th class="size">大小</th>
+                <th class="time">更新时间</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="file-list"></tbody>
+          </table>
+          <div id="empty" class="empty hidden">当前目录没有可显示的文件</div>
+        </section>
+      </section>
+
+      <section id="images-view" class="hidden">
+        <section class="toolbar">
+          <div>
+            <h2 class="section-title">图片分享中心</h2>
+            <div class="subtitle">仅显示 storage 中的图片文件</div>
+          </div>
+          <button class="button secondary" id="refresh-images">刷新</button>
+        </section>
+        <div class="image-grid" id="image-grid"></div>
+      </section>
+    </main>
+
+    <div class="modal-backdrop" id="password-modal">
+      <form class="modal" id="password-form">
+        <h2>输入下载密码</h2>
+        <div class="subtitle" id="password-target"></div>
+        <div class="field" style="margin-top: 14px;">
+          <label for="download-password">密码</label>
+          <input id="download-password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="error" id="password-error"></div>
+        <div class="actions">
+          <button class="button secondary" type="button" id="cancel-password">取消</button>
+          <button class="button" type="submit">继续</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-backdrop" id="auth-modal">
+      <form class="modal" id="auth-form">
+        <h2 id="auth-title">登录</h2>
+        <div class="field">
+          <label for="auth-username">用户名</label>
+          <input id="auth-username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="auth-password">密码</label>
+          <input id="auth-password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field hidden" id="invite-field">
+          <label for="auth-invite">邀请码</label>
+          <input id="auth-invite">
+        </div>
+        <div class="error" id="auth-error"></div>
+        <div class="actions">
+          <button class="button secondary" type="button" id="auth-cancel">取消</button>
+          <button class="button" type="submit">提交</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-backdrop" id="preview-modal">
+      <div class="modal preview-modal">
+        <div class="actions" style="margin-top: 0;">
+          <button class="button secondary" type="button" id="preview-close">关闭</button>
+        </div>
+        <div id="preview-body"></div>
+      </div>
+    </div>
+
+    <script src="/app.js?v=20260617-3"></script>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+Example release artifact.
+
+This file can be protected from the admin panel by adding a rule for:
+/releases/example-release.txt

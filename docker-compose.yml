@@ -1,0 +1,18 @@
+services:
+  easy-file-sharing:
+    build: .
+    container_name: easy-file-sharing
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      SITE_TITLE: Easy File Sharing
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123456
+      JWT_SECRET: change-this-jwt-secret
+      TK_SECRET: change-this-refresh-secret
+      ENABLE_ADMIN_GIT: "false"
+    volumes:
+      - ./storage:/app/storage
+      - ./data:/app/data
+    restart: unless-stopped
