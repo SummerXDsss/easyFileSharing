@@ -2,9 +2,11 @@ const state = {
   path: '/',
   entries: [],
   images: [],
+  userFiles: [],
   pendingDownload: null,
   searchResults: [],
   searching: false,
+  pendingUploadFiles: [],
   authMode: 'login',
   user: JSON.parse(localStorage.getItem('efs_user') || 'null'),
   token: localStorage.getItem('efs_token') || '',
@@ -14,7 +16,7 @@ const els = {
   title: document.querySelector('#site-title'),
   logo: document.querySelector('#site-logo'),
   authArea: document.querySelector('#auth-area'),
-  crumbs: document.querySelector('#crumbs'),
+  pathInput: document.querySelector('#path-input'),
   search: document.querySelector('#search'),
   list: document.querySelector('#file-list'),
   empty: document.querySelector('#empty'),
@@ -31,6 +33,8 @@ const els = {
   authError: document.querySelector('#auth-error'),
   previewModal: document.querySelector('#preview-modal'),
   previewBody: document.querySelector('#preview-body'),
+  spaceList: document.querySelector('#space-list'),
+  spaceError: document.querySelector('#space-error'),
 };
 
 function applyTheme(theme = localStorage.getItem('efs_theme') || 'light') {
@@ -60,6 +64,13 @@ async function api(url, options = {}) {
   if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   const response = await fetch(url, { ...options, headers });
   const data = await response.json().catch(() => ({}));
+  if (response.status === 401 && !url.startsWith('/api/admin/')) {
+    state.user = null;
+    state.token = '';
+    localStorage.removeItem('efs_user');
+    localStorage.removeItem('efs_token');
+    renderAuth();
+  }
   if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
@@ -133,6 +144,7 @@ function renderAuth() {
       <button class="button secondary" id="logout">退出</button>
     `;
     document.querySelector('#logout').addEventListener('click', () => {
+      fetch('/api/logout', { method: 'POST' }).catch(() => {});
       state.user = null;
       state.token = '';
       localStorage.removeItem('efs_user');
@@ -144,16 +156,8 @@ function renderAuth() {
   applyTheme();
 }
 
-function renderCrumbs() {
-  const parts = state.path.split('/').filter(Boolean);
-  const items = ['<button data-path="/">root</button>'];
-  let current = '';
-  parts.forEach((part) => {
-    current += `/${part}`;
-    items.push('<span>/</span>');
-    items.push(`<button data-path="${escapeHtml(current)}">${escapeHtml(part)}</button>`);
-  });
-  els.crumbs.innerHTML = items.join('');
+function renderPath() {
+  els.pathInput.value = state.path || '/';
 }
 
 function statusPills(entry) {
@@ -232,14 +236,54 @@ async function loadDirectory(path = '/') {
   const data = await api(`/api/list?path=${encodeURIComponent(path)}`);
   state.path = data.path;
   state.entries = data.entries;
-  renderCrumbs();
+  renderPath();
   renderRows();
+}
+
+async function jumpPath(input) {
+  const next = String(input || '/').trim() || '/';
+  if (next.includes('..') || next.includes('\\') || next.includes('\0')) {
+    renderPath();
+    return;
+  }
+  try {
+    await loadDirectory(next.startsWith('/') ? next : `/${next}`);
+  } catch {
+    renderPath();
+  }
 }
 
 async function loadImages() {
   const data = await api('/api/images');
   state.images = data.images;
   renderImages();
+}
+
+async function loadUserFiles() {
+  if (!state.user) {
+    els.spaceList.innerHTML = '<tr><td colspan="6">请先登录</td></tr>';
+    return;
+  }
+  try {
+    const data = await api('/api/me/files');
+    state.userFiles = data.files;
+    els.spaceList.innerHTML = data.files.map((file) => {
+      const shareUrl = file.share_id ? `${location.origin}/s/${file.share_id}?code=提取码` : '-';
+      return `
+        <tr>
+          <td><div class="name-cell"><span class="icon"><span class="file-badge file">USR</span></span><button class="link-button name-link" data-own-download="${file.id}">${escapeHtml(file.name)}</button></div></td>
+          <td><input class="table-input" data-own-note="${file.id}" value="${escapeHtml(file.note || '')}"></td>
+          <td><select data-own-visibility="${file.id}"><option value="private" ${file.visibility === 'private' ? 'selected' : ''}>私有</option><option value="public" ${file.visibility === 'public' ? 'selected' : ''}>公开</option></select></td>
+          <td>${formatBytes(file.size)}</td>
+          <td>${file.share_id ? `<button class="link-button" data-copy-share="${escapeHtml(shareUrl)}">复制链接</button>` : '-'}</td>
+          <td><div class="row-actions"><input class="table-input compact-input" data-own-code="${file.id}" placeholder="提取码"><button class="link-button" data-own-save="${file.id}">保存</button></div></td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="6">暂无文件</td></tr>';
+  } catch (error) {
+    els.spaceList.innerHTML = '<tr><td colspan="6">登录已过期，请重新登录</td></tr>';
+    els.spaceError.textContent = error.message;
+  }
 }
 
 function openPasswordModal(filePath) {
@@ -297,13 +341,46 @@ document.querySelectorAll('.nav-link').forEach((button) => {
     button.classList.add('active');
     document.querySelector('#files-view').classList.toggle('hidden', button.dataset.view !== 'files');
     document.querySelector('#images-view').classList.toggle('hidden', button.dataset.view !== 'images');
+    document.querySelector('#space-view').classList.toggle('hidden', button.dataset.view !== 'space');
     if (button.dataset.view === 'images') await loadImages();
+    if (button.dataset.view === 'space') await loadUserFiles();
   });
 });
 
-els.crumbs.addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-path]');
-  if (button) loadDirectory(button.dataset.path);
+els.pathInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    jumpPath(els.pathInput.value);
+  }
+});
+
+els.pathInput.addEventListener('blur', () => jumpPath(els.pathInput.value));
+
+document.querySelector('#refresh-space').addEventListener('click', loadUserFiles);
+
+document.querySelector('#user-upload-form').addEventListener('click', (event) => {
+  if (event.target.id !== 'user-upload-file' && event.target.tagName !== 'BUTTON' && event.target.tagName !== 'INPUT' && event.target.tagName !== 'SELECT') {
+    document.querySelector('#user-upload-file').click();
+  }
+});
+
+document.querySelector('#user-upload-form').addEventListener('dragover', (event) => {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragging');
+});
+
+document.querySelector('#user-upload-form').addEventListener('dragleave', (event) => {
+  event.currentTarget.classList.remove('dragging');
+});
+
+document.querySelector('#user-upload-form').addEventListener('drop', (event) => {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragging');
+  state.pendingUploadFiles = Array.from(event.dataTransfer.files || []);
+});
+
+document.querySelector('#user-upload-file').addEventListener('change', (event) => {
+  state.pendingUploadFiles = Array.from(event.target.files || []);
 });
 
 els.list.addEventListener('click', (event) => {
@@ -318,6 +395,64 @@ els.list.addEventListener('click', (event) => {
 els.imageGrid.addEventListener('click', (event) => {
   const previewButton = event.target.closest('[data-preview]');
   if (previewButton) openPreview(previewButton.dataset.preview, previewButton.dataset.kind);
+});
+
+els.spaceList.addEventListener('click', async (event) => {
+  const download = event.target.closest('[data-own-download]');
+  const save = event.target.closest('[data-own-save]');
+  const copy = event.target.closest('[data-copy-share]');
+  if (download) window.location.href = `/u/file/${download.dataset.ownDownload}`;
+  if (copy) {
+    await navigator.clipboard.writeText(copy.dataset.copyShare);
+    copy.textContent = '已复制';
+  }
+  if (save) {
+    const id = save.dataset.ownSave;
+    try {
+      await api(`/api/me/files/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          note: document.querySelector(`[data-own-note="${CSS.escape(id)}"]`).value,
+          visibility: document.querySelector(`[data-own-visibility="${CSS.escape(id)}"]`).value,
+          extractCode: document.querySelector(`[data-own-code="${CSS.escape(id)}"]`).value,
+        }),
+      });
+      await loadUserFiles();
+    } catch (error) {
+      els.spaceError.textContent = error.message;
+    }
+  }
+});
+
+document.querySelector('#user-upload-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.user) return openAuth('login');
+  const files = state.pendingUploadFiles.length
+    ? state.pendingUploadFiles
+    : Array.from(document.querySelector('#user-upload-file').files || []);
+  if (!files.length) return;
+  const visibility = document.querySelector('#user-upload-visibility').value;
+  const extractCode = document.querySelector('#user-upload-code').value;
+  if (visibility === 'public' && !extractCode) {
+    els.spaceError.textContent = '公开分享必须设置提取码';
+    return;
+  }
+  for (const file of files) {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('note', document.querySelector('#user-upload-note').value);
+    form.append('visibility', visibility);
+    form.append('extractCode', extractCode);
+    await api('/api/me/upload', { method: 'POST', body: form });
+  }
+  document.querySelector('#user-upload-file').value = '';
+  state.pendingUploadFiles = [];
+  els.spaceError.textContent = '';
+  await loadUserFiles();
+});
+
+document.querySelector('#user-upload-visibility').addEventListener('change', (event) => {
+  document.querySelector('#user-upload-code').required = event.target.value === 'public';
 });
 
 let searchTimer = null;

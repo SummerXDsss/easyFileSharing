@@ -156,6 +156,30 @@ select {
   font-size: 14px;
 }
 
+.pathbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: min(520px, 100%);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+}
+
+.prompt {
+  color: var(--accent-dark);
+  font-weight: 800;
+}
+
+.path-input {
+  flex: 1;
+  min-width: 120px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 9px 10px;
+  font-family: inherit;
+}
+
 .crumbs button,
 .link-button {
   border: 0;
@@ -407,6 +431,41 @@ th.time {
   color: var(--muted);
 }
 
+.drop-zone {
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.drop-zone.dragging {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.drop-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.drop-subtitle {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.drop-controls {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 140px 140px auto;
+  gap: 10px;
+}
+
+.compact-input {
+  max-width: 110px;
+}
+
 .modal h2,
 .form-panel h2 {
   margin: 0 0 14px;
@@ -542,6 +601,10 @@ input::placeholder {
   }
 
   .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .drop-controls {
     grid-template-columns: 1fr;
   }
 

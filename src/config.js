@@ -6,6 +6,7 @@ module.exports = {
   rootDir,
   publicDir: path.join(rootDir, 'public'),
   storageDir: path.join(rootDir, 'storage'),
+  userUploadsDir: path.join(rootDir, 'user_uploads'),
   dataDir: path.join(rootDir, 'data'),
   thumbsDir: path.join(rootDir, 'data', 'thumbs'),
   dbPath: path.join(rootDir, 'data', 'download-site.sqlite'),

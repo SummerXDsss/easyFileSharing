@@ -35,9 +35,28 @@ function clearRefreshCookie(res) {
   res.clearCookie('tk', { path: '/' });
 }
 
-function authenticateBearer(req, res, next) {
+function setUserCookie(res, token) {
+  res.cookie('user_token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+    maxAge: config.refreshTokenTtlDays * 24 * 60 * 60 * 1000,
+  });
+}
+
+function clearUserCookie(res) {
+  res.clearCookie('user_token', { path: '/' });
+}
+
+function readRequestToken(req) {
   const header = req.get('authorization') || '';
-  const [, token] = header.match(/^Bearer\s+(.+)$/i) || [];
+  const [, bearer] = header.match(/^Bearer\s+(.+)$/i) || [];
+  return bearer || req.cookies?.user_token || '';
+}
+
+function authenticateBearer(req, res, next) {
+  const token = readRequestToken(req);
   if (!token) {
     return res.status(401).json({ error: 'Missing access token' });
   }
@@ -52,8 +71,7 @@ function authenticateBearer(req, res, next) {
 }
 
 function optionalBearer(req, res, next) {
-  const header = req.get('authorization') || '';
-  const [, token] = header.match(/^Bearer\s+(.+)$/i) || [];
+  const token = readRequestToken(req);
   if (!token) return next();
   try {
     req.auth = jwt.verify(token, config.jwtSecret);
@@ -145,6 +163,7 @@ function revokeRefreshToken(rawToken) {
 module.exports = {
   authenticateBearer,
   clearRefreshCookie,
+  clearUserCookie,
   createInviteCode,
   createRefreshToken,
   createUser,
@@ -155,6 +174,7 @@ module.exports = {
   requireUserOrAdmin,
   revokeRefreshToken,
   setRefreshCookie,
+  setUserCookie,
   signAccessToken,
   verifyAdmin,
   verifyUser,

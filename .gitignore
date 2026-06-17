@@ -4,5 +4,6 @@ data/*.sqlite
 data/*.sqlite-*
 data/*.log
 data/thumbs/
+user_uploads/
 .superpowers/
 .playwright-mcp/

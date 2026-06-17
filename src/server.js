@@ -13,6 +13,7 @@ const config = require('./config');
 const { db, initDatabase } = require('./db');
 const {
   clearRefreshCookie,
+  clearUserCookie,
   createInviteCode,
   createRefreshToken,
   createUser,
@@ -20,8 +21,10 @@ const {
   optionalBearer,
   refreshAccessToken,
   requireAdmin,
+  requireUserOrAdmin,
   revokeRefreshToken,
   setRefreshCookie,
+  setUserCookie,
   signAccessToken,
   verifyAdmin,
   verifyUser,
@@ -34,10 +37,12 @@ const { getSiteConfig, updateSiteConfig } = require('./settings');
 const { assertStorageExists, normalizeVirtualPath, resolveStoragePath } = require('./paths');
 const { ensureThumbnail } = require('./thumbs');
 const { isImageFile, isPreviewable, isVideoFile } = require('./utils');
+const { createUserFile, getOwnFile, getShare, listUserFiles, updateUserFile, verifyShareCode } = require('./user-space');
 
 initDatabase();
 assertStorageExists();
 fs.mkdirSync(config.thumbsDir, { recursive: true });
+fs.mkdirSync(config.userUploadsDir, { recursive: true });
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 * 1024 } });
@@ -99,6 +104,7 @@ app.post('/api/register', (req, res) => {
   try {
     const user = createUser(req.body);
     const accessToken = signAccessToken(user, 'user');
+    setUserCookie(res, accessToken);
     res.status(201).json({ user, accessToken });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -108,7 +114,70 @@ app.post('/api/register', (req, res) => {
 app.post('/api/login', (req, res) => {
   const user = verifyUser(req.body.username, req.body.password);
   if (!user) return res.status(401).json({ error: 'Invalid username or password' });
-  res.json({ user, accessToken: signAccessToken(user, 'user') });
+  const accessToken = signAccessToken(user, 'user');
+  setUserCookie(res, accessToken);
+  res.json({ user, accessToken });
+});
+
+app.post('/api/logout', (req, res) => {
+  clearUserCookie(res);
+  res.json({ ok: true });
+});
+
+app.get('/api/me/files', requireUserOrAdmin, (req, res) => {
+  if (req.auth.role !== 'user') return res.status(403).json({ error: 'User space is for normal users' });
+  res.json({ files: listUserFiles(Number(req.auth.sub)) });
+});
+
+app.post('/api/me/upload', requireUserOrAdmin, upload.single('file'), (req, res) => {
+  try {
+    if (req.auth.role !== 'user') return res.status(403).json({ error: 'User upload requires a user account' });
+    if (!req.file) return res.status(400).json({ error: 'File is required' });
+    const file = createUserFile({
+      userId: Number(req.auth.sub),
+      originalName: req.file.originalname,
+      buffer: req.file.buffer,
+      note: req.body.note || '',
+      visibility: req.body.visibility || 'private',
+      extractCode: req.body.extractCode || '',
+    });
+    res.status(201).json({ file });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/me/files/:id', requireUserOrAdmin, (req, res) => {
+  try {
+    if (req.auth.role !== 'user') return res.status(403).json({ error: 'User space is for normal users' });
+    const file = updateUserFile(Number(req.params.id), Number(req.auth.sub), req.body);
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    res.json({ file });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/u/file/:id', requireUserOrAdmin, (req, res) => {
+  const file = getOwnFile(Number(req.params.id), Number(req.auth.sub));
+  if (!file) return res.status(404).send('File not found');
+  res.setHeader('Content-Disposition', contentDisposition(file.name));
+  res.sendFile(file.stored_path);
+});
+
+app.post('/api/share/:shareId/check', (req, res) => {
+  const file = getShare(req.params.shareId);
+  if (!file || !verifyShareCode(file, req.body.extractCode)) {
+    return res.status(403).json({ error: 'Invalid extract code' });
+  }
+  res.json({ ok: true, file: { name: file.name, size: file.size, note: file.note } });
+});
+
+app.get('/s/:shareId', (req, res) => {
+  const file = getShare(req.params.shareId);
+  if (!file || !verifyShareCode(file, req.query.code)) return res.status(403).send('Invalid extract code');
+  res.setHeader('Content-Disposition', contentDisposition(file.name));
+  res.sendFile(file.stored_path);
 });
 
 app.get('/api/list', optionalBearer, (req, res) => {
