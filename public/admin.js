@@ -1,10 +1,21 @@
 let accessToken = '';
 let currentPath = '/';
-let currentFiles = [];
 
 const $ = (selector) => document.querySelector(selector);
 const loginView = $('#login-view');
 const adminView = $('#admin-view');
+
+function applyTheme(theme = localStorage.getItem('efs_theme') || 'light') {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('efs_theme', theme);
+  document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
+    button.textContent = theme === 'dark' ? '浅色' : '深色';
+  });
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+}
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -34,11 +45,17 @@ async function api(url, options = {}) {
 function showAdmin() { loginView.classList.add('hidden'); adminView.classList.remove('hidden'); }
 function showLogin() { adminView.classList.add('hidden'); loginView.classList.remove('hidden'); }
 
-function icon(entry) {
-  if (entry.type === 'directory') return '📁';
-  if (entry.image) return '🖼️';
-  if (entry.video) return '🎞️';
-  return '📄';
+function fileKind(entry) {
+  if (entry.type === 'directory') return 'dir';
+  if (entry.image) return 'img';
+  if (entry.video) return 'vid';
+  return 'doc';
+}
+
+function fileBadge(entry) {
+  const labels = { dir: 'DIR', img: 'IMG', vid: 'VID', doc: 'DOC' };
+  const kind = fileKind(entry);
+  return `<span class="file-badge ${kind}">${labels[kind]}</span>`;
 }
 
 function formatBytes(value) {
@@ -62,22 +79,25 @@ function renderCrumbs() {
   $('#admin-crumbs').innerHTML = items.join('');
 }
 
+function qByData(name, value) {
+  return document.querySelector(`[data-${name}="${CSS.escape(value)}"]`);
+}
+
 async function loadFiles(path = currentPath) {
   const data = await api(`/api/admin/files?path=${encodeURIComponent(path)}`);
   currentPath = data.path;
-  currentFiles = data.entries;
   renderCrumbs();
   $('#admin-file-list').innerHTML = data.entries.map((entry) => `
     <tr>
-      <td><div class="name-cell"><span class="icon">${icon(entry)}</span>${entry.type === 'directory' ? `<button class="link-button" data-open="${escapeHtml(entry.path)}">${escapeHtml(entry.name)}</button>` : escapeHtml(entry.name)}</div></td>
+      <td><div class="name-cell"><span class="icon">${fileBadge(entry)}</span>${entry.type === 'directory' ? `<button class="link-button name-link" data-open="${escapeHtml(entry.path)}">${escapeHtml(entry.name)}</button>` : `<span class="name-link">${escapeHtml(entry.name)}</span>`}</div></td>
       <td><input class="table-input" data-note="${escapeHtml(entry.path)}" value="${escapeHtml(entry.note || '')}"></td>
       <td>${entry.type === 'file' ? `<select data-mode="${escapeHtml(entry.path)}"><option value="static" ${entry.linkMode === 'static' ? 'selected' : ''}>静态</option><option value="dynamic" ${entry.linkMode === 'dynamic' ? 'selected' : ''}>动态</option></select>` : '-'}</td>
       <td>${entry.type === 'file' ? `<input type="checkbox" data-login="${escapeHtml(entry.path)}" ${entry.requireLogin ? 'checked' : ''}>` : '-'}</td>
       <td class="size">${entry.type === 'directory' ? '-' : formatBytes(entry.size)}</td>
-      <td>
+      <td><div class="row-actions">
         <button class="link-button" data-rename="${escapeHtml(entry.path)}">更名</button>
         ${entry.type === 'file' ? `<button class="link-button" data-save-meta="${escapeHtml(entry.path)}">保存</button><button class="link-button" data-token="${escapeHtml(entry.path)}">动态链接</button>` : ''}
-      </td>
+      </div></td>
     </tr>
   `).join('');
 }
@@ -98,7 +118,7 @@ async function loadRules() {
       <td><span class="path-code">${escapeHtml(rule.path)}</span></td>
       <td>${escapeHtml(rule.note || '-')}</td>
       <td>${rule.enabled ? '<span class="pill locked">启用</span>' : '<span class="pill">停用</span>'}</td>
-      <td><button class="link-button" data-fill-rule="${rule.id}" data-path="${escapeHtml(rule.path)}" data-note="${escapeHtml(rule.note || '')}" data-enabled="${rule.enabled}">编辑</button><button class="link-button" data-delete-rule="${rule.id}">删除</button></td>
+      <td><div class="row-actions"><button class="link-button" data-fill-rule="${rule.id}" data-path="${escapeHtml(rule.path)}" data-note="${escapeHtml(rule.note || '')}" data-enabled="${rule.enabled}">编辑</button><button class="link-button" data-delete-rule="${rule.id}">删除</button></div></td>
     </tr>
   `).join('');
 }
@@ -118,6 +138,7 @@ async function loadLogs() {
 }
 
 async function bootstrap() {
+  applyTheme();
   try {
     const data = await api('/api/admin/refresh', { method: 'POST' });
     accessToken = data.accessToken;
@@ -150,6 +171,8 @@ $('#logout').addEventListener('click', async () => {
   showLogin();
 });
 
+document.querySelectorAll('[data-theme-toggle]').forEach((button) => button.addEventListener('click', toggleTheme));
+
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', async () => {
     document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
@@ -180,14 +203,14 @@ $('#admin-file-list').addEventListener('click', async (event) => {
     }
   }
   if (save) {
-    const path = save.dataset.saveMeta;
+    const filePath = save.dataset.saveMeta;
     await api('/api/admin/meta', {
       method: 'PUT',
       body: JSON.stringify({
-        path,
-        note: document.querySelector(`[data-note="${CSS.escape(path)}"]`).value,
-        linkMode: document.querySelector(`[data-mode="${CSS.escape(path)}"]`).value,
-        requireLogin: document.querySelector(`[data-login="${CSS.escape(path)}"]`).checked,
+        path: filePath,
+        note: qByData('note', filePath).value,
+        linkMode: qByData('mode', filePath).value,
+        requireLogin: qByData('login', filePath).checked,
       }),
     });
     await loadFiles();

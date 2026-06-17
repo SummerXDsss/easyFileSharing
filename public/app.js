@@ -3,6 +3,8 @@ const state = {
   entries: [],
   images: [],
   pendingDownload: null,
+  searchResults: [],
+  searching: false,
   authMode: 'login',
   user: JSON.parse(localStorage.getItem('efs_user') || 'null'),
   token: localStorage.getItem('efs_token') || '',
@@ -31,6 +33,18 @@ const els = {
   previewBody: document.querySelector('#preview-body'),
 };
 
+function applyTheme(theme = localStorage.getItem('efs_theme') || 'light') {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('efs_theme', theme);
+  document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
+    button.textContent = theme === 'dark' ? '浅色' : '深色';
+  });
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
@@ -46,21 +60,28 @@ async function api(url, options = {}) {
   if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   const response = await fetch(url, { ...options, headers });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || '请求失败');
+  if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
 
-function fileIcon(entry) {
-  if (entry.type === 'directory') return '📁';
-  if (entry.image && entry.thumbnailUrl) return `<img class="thumb-mini" src="${entry.thumbnailUrl}" alt="">`;
-  if (entry.video) return '🎞️';
-  if (entry.protected) return '🔒';
+function fileKind(entry) {
+  if (entry.type === 'directory') return 'dir';
+  if (entry.image) return 'img';
+  if (entry.video) return 'vid';
+  if (entry.protected) return 'lock';
   const ext = entry.name.split('.').pop().toLowerCase();
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '🗜️';
-  if (['mp3', 'wav', 'flac', 'aac'].includes(ext)) return '🎵';
-  if (['js', 'ts', 'css', 'html', 'json', 'py', 'go', 'java'].includes(ext)) return '⌘';
-  if (['txt', 'md', 'pdf', 'doc', 'docx'].includes(ext)) return '📄';
-  return '📦';
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'zip';
+  if (['mp3', 'wav', 'flac', 'aac'].includes(ext)) return 'aud';
+  if (['js', 'ts', 'css', 'html', 'json', 'py', 'go', 'java'].includes(ext)) return 'code';
+  if (['txt', 'md', 'pdf', 'doc', 'docx'].includes(ext)) return 'doc';
+  return 'file';
+}
+
+function fileBadge(entry) {
+  if (entry.image && entry.thumbnailUrl) return `<img class="thumb-mini" src="${entry.thumbnailUrl}" alt="">`;
+  const labels = { dir: 'DIR', img: 'IMG', vid: 'VID', lock: 'KEY', zip: 'ZIP', aud: 'AUD', code: 'DEV', doc: 'DOC', file: 'BIN' };
+  const kind = fileKind(entry);
+  return `<span class="file-badge ${kind}">${labels[kind]}</span>`;
 }
 
 function formatBytes(value) {
@@ -98,25 +119,29 @@ async function getDownloadUrl(entry, password = '') {
 function renderAuth() {
   if (!state.user) {
     els.authArea.innerHTML = `
+      <button class="button ghost" data-theme-toggle type="button">深色</button>
       <button class="button secondary" id="login-open">登录</button>
       <button class="button" id="register-open">注册</button>
     `;
     document.querySelector('#login-open').addEventListener('click', () => openAuth('login'));
     document.querySelector('#register-open').addEventListener('click', () => openAuth('register'));
-    return;
+  } else {
+    els.authArea.innerHTML = `
+      <button class="button ghost" data-theme-toggle type="button">深色</button>
+      <img class="avatar" src="${state.user.avatar}" alt="">
+      <span>${escapeHtml(state.user.username)}</span>
+      <button class="button secondary" id="logout">退出</button>
+    `;
+    document.querySelector('#logout').addEventListener('click', () => {
+      state.user = null;
+      state.token = '';
+      localStorage.removeItem('efs_user');
+      localStorage.removeItem('efs_token');
+      renderAuth();
+    });
   }
-  els.authArea.innerHTML = `
-    <img class="avatar" src="${state.user.avatar}" alt="">
-    <span>${escapeHtml(state.user.username)}</span>
-    <button class="button secondary" id="logout">退出</button>
-  `;
-  document.querySelector('#logout').addEventListener('click', () => {
-    state.user = null;
-    state.token = '';
-    localStorage.removeItem('efs_user');
-    localStorage.removeItem('efs_token');
-    renderAuth();
-  });
+  document.querySelectorAll('[data-theme-toggle]').forEach((button) => button.addEventListener('click', toggleTheme));
+  applyTheme();
 }
 
 function renderCrumbs() {
@@ -141,31 +166,46 @@ function statusPills(entry) {
 
 function renderRows() {
   const query = els.search.value.trim().toLowerCase();
-  const entries = state.entries.filter((entry) => entry.name.toLowerCase().includes(query));
+  const entries = state.searching
+    ? state.searchResults
+    : state.entries.filter((entry) => entry.name.toLowerCase().includes(query));
   els.empty.classList.toggle('hidden', entries.length > 0);
   els.list.innerHTML = entries.map((entry) => {
     const name = escapeHtml(entry.name);
     const itemPath = escapeHtml(entry.path);
-    const icon = fileIcon(entry);
     const nameControl = entry.type === 'directory'
-      ? `<button class="link-button" data-open="${itemPath}">${name}</button>`
-      : `<button class="link-button" data-download="${itemPath}">${name}</button>`;
+      ? `<button class="link-button name-link" data-open="${itemPath}">${name}</button>`
+      : `<button class="link-button name-link" data-download="${itemPath}">${name}</button>`;
     const preview = entry.previewable ? `<button class="link-button" data-preview="${itemPath}" data-kind="${entry.video ? 'video' : 'image'}">预览</button>` : '';
     const action = entry.type === 'directory'
-      ? `<button class="link-button" data-open="${itemPath}">进入</button>`
-      : `<button class="button secondary" data-download="${itemPath}">下载</button> ${preview}`;
+      ? `<button class="button secondary compact" data-open="${itemPath}">进入</button>`
+      : `<button class="button secondary compact" data-download="${itemPath}">下载</button>${preview}`;
     return `
       <tr>
-        <td><div class="name-cell"><span class="icon">${icon}</span>${nameControl}</div></td>
+        <td><div class="name-cell"><span class="icon">${fileBadge(entry)}</span>${nameControl}</div></td>
         <td>${escapeHtml(entry.note || '-')}</td>
         <td>${escapeHtml(entry.uploader || '-')}</td>
         <td class="size">${entry.type === 'directory' ? '-' : formatBytes(entry.size)}</td>
         <td class="time">${formatTime(entry.modifiedAt)}</td>
         <td>${entry.type === 'directory' ? '-' : statusPills(entry)}</td>
-        <td>${action}</td>
+        <td><div class="row-actions">${action}</div></td>
       </tr>
     `;
   }).join('');
+}
+
+async function runSearch() {
+  const query = els.search.value.trim();
+  if (!query) {
+    state.searching = false;
+    state.searchResults = [];
+    renderRows();
+    return;
+  }
+  const data = await api(`/api/search?q=${encodeURIComponent(query)}`);
+  state.searching = true;
+  state.searchResults = data.results;
+  renderRows();
 }
 
 function renderImages() {
@@ -173,7 +213,7 @@ function renderImages() {
     <button class="image-card" data-preview="${escapeHtml(entry.path)}" data-kind="image">
       <img src="${entry.thumbnailUrl}" alt="">
       <span>${escapeHtml(entry.name)}</span>
-      <small>${escapeHtml(entry.note || entry.uploader || '')}</small>
+      <small>${escapeHtml(entry.note || entry.uploader || '未填写备注')}</small>
     </button>
   `).join('') || '<div class="empty">暂无图片</div>';
 }
@@ -280,7 +320,11 @@ els.imageGrid.addEventListener('click', (event) => {
   if (previewButton) openPreview(previewButton.dataset.preview, previewButton.dataset.kind);
 });
 
-els.search.addEventListener('input', renderRows);
+let searchTimer = null;
+els.search.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => runSearch().catch(() => renderRows()), 180);
+});
 document.querySelector('#cancel-password').addEventListener('click', closePasswordModal);
 document.querySelector('#auth-cancel').addEventListener('click', closeAuth);
 document.querySelector('#preview-close').addEventListener('click', () => els.previewModal.classList.remove('open'));
@@ -326,6 +370,7 @@ els.authForm.addEventListener('submit', async (event) => {
   }
 });
 
+applyTheme();
 loadConfig();
 renderAuth();
 loadDirectory().catch((error) => {

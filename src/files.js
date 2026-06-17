@@ -57,7 +57,26 @@ function listDirectory(virtualPath = '/') {
   };
 }
 
+function searchFiles(query, limit = 200) {
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) return [];
+  const results = [];
+  function walk(virtualPath) {
+    if (results.length >= limit) return;
+    const { entries } = listDirectory(virtualPath);
+    entries.forEach((entry) => {
+      if (results.length >= limit) return;
+      const haystack = `${entry.name} ${entry.path} ${entry.note || ''} ${entry.uploader || ''}`.toLowerCase();
+      if (haystack.includes(needle)) results.push(entry);
+      if (entry.type === 'directory') walk(entry.path);
+    });
+  }
+  walk('/');
+  return results;
+}
+
 module.exports = {
   formatEntryStats,
   listDirectory,
+  searchFiles,
 };

@@ -27,7 +27,7 @@ const {
   verifyUser,
 } = require('./auth');
 const { createDynamicToken, buildStaticUrl, contentDisposition, sendFileStream, verifyDynamicToken } = require('./download');
-const { listDirectory } = require('./files');
+const { listDirectory, searchFiles } = require('./files');
 const { getMeta, listMeta, moveMeta, updateMeta } = require('./meta');
 const { deleteRule, isProtected, listRules, moveRules, updateRule, upsertRule, verifyDownloadPassword } = require('./protection');
 const { getSiteConfig, updateSiteConfig } = require('./settings');
@@ -116,6 +116,14 @@ app.get('/api/list', optionalBearer, (req, res) => {
     res.json(listDirectory(req.query.path || '/'));
   } catch (error) {
     res.status(error.status || 404).json({ error: error.message || 'Directory not found' });
+  }
+});
+
+app.get('/api/search', optionalBearer, (req, res) => {
+  try {
+    res.json({ query: String(req.query.q || ''), results: searchFiles(req.query.q) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

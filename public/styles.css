@@ -13,6 +13,20 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+:root[data-theme='dark'] {
+  --bg: #0b1220;
+  --panel: #111a2c;
+  --text: #e7edf6;
+  --muted: #8e9bb0;
+  --line: #22324a;
+  --accent: #2dd4bf;
+  --accent-dark: #6ee7d8;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --code: #162235;
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -48,8 +62,9 @@ select {
   justify-content: space-between;
   gap: 18px;
   padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px);
 }
 
 .site-brand,
@@ -83,7 +98,7 @@ select {
 
 .nav-link.active {
   border-color: var(--line);
-  background: #eef3f7;
+  background: color-mix(in srgb, var(--panel) 80%, var(--accent) 20%);
   color: var(--accent-dark);
 }
 
@@ -150,6 +165,11 @@ select {
   padding: 3px 4px;
 }
 
+.link-button.name-link {
+  font-weight: 650;
+  text-align: left;
+}
+
 .search {
   width: min(320px, 100%);
   border: 1px solid var(--line);
@@ -163,6 +183,7 @@ select {
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
 }
 
 table {
@@ -180,13 +201,13 @@ td {
 }
 
 th {
-  background: #eef3f7;
-  color: #394557;
+  background: color-mix(in srgb, var(--panel) 82%, var(--bg) 18%);
+  color: var(--text);
   font-weight: 650;
 }
 
 tbody tr:hover {
-  background: #f8fbfd;
+  background: color-mix(in srgb, var(--panel) 84%, var(--accent) 16%);
 }
 
 td.size,
@@ -212,6 +233,29 @@ th.time {
   flex: 0 0 28px;
   overflow: hidden;
 }
+
+.file-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: color-mix(in srgb, var(--panel) 70%, var(--bg) 30%);
+}
+
+.file-badge.dir { color: #2563eb; }
+.file-badge.img { color: #0f766e; }
+.file-badge.vid { color: #7c3aed; }
+.file-badge.lock { color: #b45309; }
+.file-badge.zip { color: #b91c1c; }
+.file-badge.aud { color: #0ea5e9; }
+.file-badge.code { color: #16a34a; }
+.file-badge.doc { color: #6366f1; }
+.file-badge.file { color: var(--muted); }
 
 .thumb-mini {
   width: 28px;
@@ -263,7 +307,18 @@ th.time {
 .button.secondary {
   border-color: var(--line);
   color: var(--text);
-  background: #fff;
+  background: var(--panel);
+}
+
+.button.ghost {
+  border-color: var(--line);
+  color: var(--text);
+  background: transparent;
+}
+
+.button.compact {
+  min-height: 32px;
+  padding: 6px 10px;
 }
 
 .button.danger {
@@ -299,7 +354,7 @@ th.time {
 
 .modal {
   width: min(430px, 100%);
-  background: #fff;
+  background: var(--panel);
   border-radius: 8px;
   border: 1px solid var(--line);
   padding: 20px;
@@ -341,7 +396,7 @@ th.time {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 6px;
-  background: #eef3f7;
+  background: color-mix(in srgb, var(--panel) 70%, var(--bg) 30%);
 }
 
 .image-card span {
@@ -366,7 +421,7 @@ th.time {
 }
 
 .field label {
-  color: #394557;
+  color: var(--text);
   font-size: 13px;
   font-weight: 650;
 }
@@ -376,7 +431,8 @@ th.time {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 9px 10px;
-  background: #fff;
+  background: var(--panel);
+  color: var(--text);
 }
 
 .actions {
@@ -415,7 +471,8 @@ th.time {
 
 .tab {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
+  color: var(--text);
   border-radius: 6px;
   padding: 8px 12px;
   cursor: pointer;
@@ -423,8 +480,24 @@ th.time {
 
 .tab.active {
   border-color: var(--accent);
-  background: #e7f6f3;
+  background: color-mix(in srgb, var(--panel) 82%, var(--accent) 18%);
   color: var(--accent-dark);
+}
+
+.table-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .login-wrap {
@@ -436,6 +509,20 @@ th.time {
 
 .login-box {
   width: min(390px, 100%);
+}
+
+input,
+select {
+  color: var(--text);
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
 }
 
 .hidden {
