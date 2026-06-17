@@ -51,7 +51,11 @@ function toggleTheme() {
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
   }[char]));
 }
 
@@ -75,24 +79,9 @@ async function api(url, options = {}) {
   return data;
 }
 
-function fileKind(entry) {
-  if (entry.type === 'directory') return 'dir';
-  if (entry.image) return 'img';
-  if (entry.video) return 'vid';
-  if (entry.protected) return 'lock';
-  const ext = entry.name.split('.').pop().toLowerCase();
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'zip';
-  if (['mp3', 'wav', 'flac', 'aac'].includes(ext)) return 'aud';
-  if (['js', 'ts', 'css', 'html', 'json', 'py', 'go', 'java'].includes(ext)) return 'code';
-  if (['txt', 'md', 'pdf', 'doc', 'docx'].includes(ext)) return 'doc';
-  return 'file';
-}
-
 function fileBadge(entry) {
   if (entry.image && entry.thumbnailUrl) return `<img class="thumb-mini" src="${entry.thumbnailUrl}" alt="">`;
-  const labels = { dir: 'DIR', img: 'IMG', vid: 'VID', lock: 'KEY', zip: 'ZIP', aud: 'AUD', code: 'DEV', doc: 'DOC', file: 'BIN' };
-  const kind = fileKind(entry);
-  return `<span class="file-badge ${kind}">${labels[kind]}</span>`;
+  return window.EFSIcons.file(entry);
 }
 
 function formatBytes(value) {
@@ -109,7 +98,11 @@ function formatBytes(value) {
 
 function formatTime(value) {
   return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(new Date(value));
 }
 
@@ -160,6 +153,12 @@ function renderPath() {
   els.pathInput.value = state.path || '/';
 }
 
+function parentPath(filePath) {
+  const parts = String(filePath || '/').split('/').filter(Boolean);
+  parts.pop();
+  return `/${parts.join('/')}`;
+}
+
 function statusPills(entry) {
   const pills = [];
   pills.push(entry.protected ? '<span class="pill locked">需要密码</span>' : '<span class="pill">公开</span>');
@@ -198,20 +197,6 @@ function renderRows() {
   }).join('');
 }
 
-async function runSearch() {
-  const query = els.search.value.trim();
-  if (!query) {
-    state.searching = false;
-    state.searchResults = [];
-    renderRows();
-    return;
-  }
-  const data = await api(`/api/search?q=${encodeURIComponent(query)}`);
-  state.searching = true;
-  state.searchResults = data.results;
-  renderRows();
-}
-
 function renderImages() {
   els.imageGrid.innerHTML = state.images.map((entry) => `
     <button class="image-card" data-preview="${escapeHtml(entry.path)}" data-kind="image">
@@ -223,17 +208,17 @@ function renderImages() {
 }
 
 async function loadConfig() {
-  const config = await api('/api/config');
-  document.title = config.siteTitle;
-  els.title.textContent = config.siteTitle;
-  if (config.siteLogo) {
-    els.logo.src = config.siteLogo;
+  const site = await api('/api/config');
+  document.title = site.siteTitle;
+  els.title.textContent = site.siteTitle;
+  if (site.siteLogo) {
+    els.logo.src = site.siteLogo;
     els.logo.classList.remove('hidden');
   }
 }
 
-async function loadDirectory(path = '/') {
-  const data = await api(`/api/list?path=${encodeURIComponent(path)}`);
+async function loadDirectory(nextPath = '/') {
+  const data = await api(`/api/list?path=${encodeURIComponent(nextPath)}`);
   state.path = data.path;
   state.entries = data.entries;
   renderPath();
@@ -251,6 +236,20 @@ async function jumpPath(input) {
   } catch {
     renderPath();
   }
+}
+
+async function runSearch() {
+  const query = els.search.value.trim();
+  if (!query) {
+    state.searching = false;
+    state.searchResults = [];
+    renderRows();
+    return;
+  }
+  const data = await api(`/api/search?q=${encodeURIComponent(query)}`);
+  state.searching = true;
+  state.searchResults = data.results;
+  renderRows();
 }
 
 async function loadImages() {
@@ -271,7 +270,7 @@ async function loadUserFiles() {
       const shareUrl = file.share_id ? `${location.origin}/s/${file.share_id}?code=提取码` : '-';
       return `
         <tr>
-          <td><div class="name-cell"><span class="icon"><span class="file-badge file">USR</span></span><button class="link-button name-link" data-own-download="${file.id}">${escapeHtml(file.name)}</button></div></td>
+          <td><div class="name-cell"><span class="icon">${window.EFSIcons.icon('file', 'kind-file')}</span><button class="link-button name-link" data-own-download="${file.id}">${escapeHtml(file.name)}</button></div></td>
           <td><input class="table-input" data-own-note="${file.id}" value="${escapeHtml(file.note || '')}"></td>
           <td><select data-own-visibility="${file.id}"><option value="private" ${file.visibility === 'private' ? 'selected' : ''}>私有</option><option value="public" ${file.visibility === 'public' ? 'selected' : ''}>公开</option></select></td>
           <td>${formatBytes(file.size)}</td>
@@ -335,6 +334,11 @@ function openPreview(filePath, kind) {
   els.previewModal.classList.add('open');
 }
 
+document.querySelector('#path-back').innerHTML = window.EFSIcons.icon('back');
+document.querySelector('#path-up').innerHTML = window.EFSIcons.icon('up');
+document.querySelector('#path-back').addEventListener('click', () => jumpPath(parentPath(state.path)));
+document.querySelector('#path-up').addEventListener('click', () => jumpPath(parentPath(state.path)));
+
 document.querySelectorAll('.nav-link').forEach((button) => {
   button.addEventListener('click', async () => {
     document.querySelectorAll('.nav-link').forEach((item) => item.classList.remove('active'));
@@ -353,35 +357,7 @@ els.pathInput.addEventListener('keydown', (event) => {
     jumpPath(els.pathInput.value);
   }
 });
-
 els.pathInput.addEventListener('blur', () => jumpPath(els.pathInput.value));
-
-document.querySelector('#refresh-space').addEventListener('click', loadUserFiles);
-
-document.querySelector('#user-upload-form').addEventListener('click', (event) => {
-  if (event.target.id !== 'user-upload-file' && event.target.tagName !== 'BUTTON' && event.target.tagName !== 'INPUT' && event.target.tagName !== 'SELECT') {
-    document.querySelector('#user-upload-file').click();
-  }
-});
-
-document.querySelector('#user-upload-form').addEventListener('dragover', (event) => {
-  event.preventDefault();
-  event.currentTarget.classList.add('dragging');
-});
-
-document.querySelector('#user-upload-form').addEventListener('dragleave', (event) => {
-  event.currentTarget.classList.remove('dragging');
-});
-
-document.querySelector('#user-upload-form').addEventListener('drop', (event) => {
-  event.preventDefault();
-  event.currentTarget.classList.remove('dragging');
-  state.pendingUploadFiles = Array.from(event.dataTransfer.files || []);
-});
-
-document.querySelector('#user-upload-file').addEventListener('change', (event) => {
-  state.pendingUploadFiles = Array.from(event.target.files || []);
-});
 
 els.list.addEventListener('click', (event) => {
   const openButton = event.target.closest('button[data-open]');
@@ -424,6 +400,34 @@ els.spaceList.addEventListener('click', async (event) => {
   }
 });
 
+document.querySelector('#refresh-images').addEventListener('click', loadImages);
+document.querySelector('#refresh-space').addEventListener('click', loadUserFiles);
+document.querySelector('#cancel-password').addEventListener('click', closePasswordModal);
+document.querySelector('#auth-cancel').addEventListener('click', closeAuth);
+document.querySelector('#preview-close').addEventListener('click', () => els.previewModal.classList.remove('open'));
+
+document.querySelector('#user-upload-form').addEventListener('click', (event) => {
+  if (!['BUTTON', 'INPUT', 'SELECT'].includes(event.target.tagName)) document.querySelector('#user-upload-file').click();
+});
+document.querySelector('#user-upload-form').addEventListener('dragover', (event) => {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragging');
+});
+document.querySelector('#user-upload-form').addEventListener('dragleave', (event) => {
+  event.currentTarget.classList.remove('dragging');
+});
+document.querySelector('#user-upload-form').addEventListener('drop', (event) => {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragging');
+  state.pendingUploadFiles = Array.from(event.dataTransfer.files || []);
+});
+document.querySelector('#user-upload-file').addEventListener('change', (event) => {
+  state.pendingUploadFiles = Array.from(event.target.files || []);
+});
+document.querySelector('#user-upload-visibility').addEventListener('change', (event) => {
+  document.querySelector('#user-upload-code').required = event.target.value === 'public';
+});
+
 document.querySelector('#user-upload-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!state.user) return openAuth('login');
@@ -451,19 +455,11 @@ document.querySelector('#user-upload-form').addEventListener('submit', async (ev
   await loadUserFiles();
 });
 
-document.querySelector('#user-upload-visibility').addEventListener('change', (event) => {
-  document.querySelector('#user-upload-code').required = event.target.value === 'public';
-});
-
 let searchTimer = null;
 els.search.addEventListener('input', () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => runSearch().catch(() => renderRows()), 180);
 });
-document.querySelector('#cancel-password').addEventListener('click', closePasswordModal);
-document.querySelector('#auth-cancel').addEventListener('click', closeAuth);
-document.querySelector('#preview-close').addEventListener('click', () => els.previewModal.classList.remove('open'));
-document.querySelector('#refresh-images').addEventListener('click', loadImages);
 
 els.passwordForm.addEventListener('submit', async (event) => {
   event.preventDefault();

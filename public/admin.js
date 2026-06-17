@@ -45,17 +45,9 @@ async function api(url, options = {}) {
 function showAdmin() { loginView.classList.add('hidden'); adminView.classList.remove('hidden'); }
 function showLogin() { adminView.classList.add('hidden'); loginView.classList.remove('hidden'); }
 
-function fileKind(entry) {
-  if (entry.type === 'directory') return 'dir';
-  if (entry.image) return 'img';
-  if (entry.video) return 'vid';
-  return 'doc';
-}
-
 function fileBadge(entry) {
-  const labels = { dir: 'DIR', img: 'IMG', vid: 'VID', doc: 'DOC' };
-  const kind = fileKind(entry);
-  return `<span class="file-badge ${kind}">${labels[kind]}</span>`;
+  if (entry.image && entry.thumbnailUrl) return `<img class="thumb-mini" src="${entry.thumbnailUrl}" alt="">`;
+  return window.EFSIcons.file(entry);
 }
 
 function formatBytes(value) {

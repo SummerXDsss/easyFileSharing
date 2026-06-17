@@ -26,10 +26,10 @@
     <main class="shell">
       <section id="files-view">
         <section class="toolbar">
-          <div class="pathbar">
-            <span class="prompt">root@share:</span>
-            <input id="path-input" class="path-input" value="/" spellcheck="false">
-            <span class="prompt">$</span>
+          <div class="explorer-bar">
+            <button class="icon-button" id="path-back" type="button" title="返回上级" aria-label="返回上级"></button>
+            <button class="icon-button" id="path-up" type="button" title="上级目录" aria-label="上级目录"></button>
+            <input id="path-input" class="path-input" value="/" spellcheck="false" aria-label="目录路径">
           </div>
           <input id="search" class="search" type="search" placeholder="搜索全部文件，或过滤当前目录">
         </section>
@@ -115,18 +115,9 @@
     <div class="modal-backdrop" id="auth-modal">
       <form class="modal" id="auth-form">
         <h2 id="auth-title">登录</h2>
-        <div class="field">
-          <label for="auth-username">用户名</label>
-          <input id="auth-username" autocomplete="username" required>
-        </div>
-        <div class="field">
-          <label for="auth-password">密码</label>
-          <input id="auth-password" type="password" autocomplete="current-password" required>
-        </div>
-        <div class="field hidden" id="invite-field">
-          <label for="auth-invite">邀请码</label>
-          <input id="auth-invite">
-        </div>
+        <div class="field"><label for="auth-username">用户名</label><input id="auth-username" autocomplete="username" required></div>
+        <div class="field"><label for="auth-password">密码</label><input id="auth-password" type="password" autocomplete="current-password" required></div>
+        <div class="field hidden" id="invite-field"><label for="auth-invite">邀请码</label><input id="auth-invite"></div>
         <div class="error" id="auth-error"></div>
         <div class="actions">
           <button class="button secondary" type="button" id="auth-cancel">取消</button>
@@ -137,13 +128,12 @@
 
     <div class="modal-backdrop" id="preview-modal">
       <div class="modal preview-modal">
-        <div class="actions" style="margin-top: 0;">
-          <button class="button secondary" type="button" id="preview-close">关闭</button>
-        </div>
+        <div class="actions" style="margin-top: 0;"><button class="button secondary" type="button" id="preview-close">关闭</button></div>
         <div id="preview-body"></div>
       </div>
     </div>
 
-    <script src="/app.js?v=20260617-4"></script>
+    <script src="/icons.js?v=20260617-5"></script>
+    <script src="/app.js?v=20260617-5"></script>
   </body>
 </html>
