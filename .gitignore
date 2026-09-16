@@ -1,5 +1,6 @@
 node_modules/
 .env
+config.json
 data/*.sqlite
 data/*.sqlite-*
 data/*.log

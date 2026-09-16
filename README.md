@@ -42,10 +42,30 @@ Default admin credentials:
 
 Change these before deployment.
 
+Run the local Node server on port 3001:
+
+```powershell
+npm run start:3001
+```
+
+Run the Docker service with npm:
+
+```powershell
+npm run docker:up -- --port 3001 --admin-password "your-strong-password"
+```
+
+Stop the Docker service:
+
+```powershell
+npm run docker:down
+```
+
 ## Important Environment Variables
 
 ```text
 PORT=3000
+HOST_PORT=3000
+CONFIG_FILE=
 SITE_TITLE=Easy File Sharing
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123456
@@ -58,6 +78,21 @@ ALLOWED_ORIGINS=https://example.com,http://localhost:3000
 REQUIRE_ALLOWED_ORIGIN=false
 ENABLE_ADMIN_GIT=false
 ```
+
+`ADMIN_PASSWORD` can be injected by environment variable or by a JSON config file. Environment variables take priority over the config file. By default, the app reads `config.json` from the project root if it exists; set `CONFIG_FILE=/path/to/config.json` to use another file.
+
+Example config file:
+
+```json
+{
+  "adminUsername": "admin",
+  "adminPassword": "change-me",
+  "jwtSecret": "long-random-secret",
+  "tkSecret": "another-long-random-secret"
+}
+```
+
+When `ADMIN_PASSWORD` or `adminPassword` is explicitly configured, startup syncs the stored admin password hash in SQLite. This keeps Docker volume deployments from silently keeping an old admin password.
 
 ## Storage
 

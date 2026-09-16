@@ -3,15 +3,21 @@ services:
     build: .
     container_name: easy-file-sharing
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:${PORT:-3000}"
     environment:
-      PORT: 3000
-      SITE_TITLE: Easy File Sharing
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin123456
-      JWT_SECRET: change-this-jwt-secret
-      TK_SECRET: change-this-refresh-secret
-      ENABLE_ADMIN_GIT: "false"
+      PORT: ${PORT:-3000}
+      CONFIG_FILE: ${CONFIG_FILE:-}
+      SITE_TITLE: ${SITE_TITLE:-Easy File Sharing}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+      JWT_SECRET: ${JWT_SECRET:-change-this-jwt-secret}
+      TK_SECRET: ${TK_SECRET:-change-this-refresh-secret}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
+      DYNAMIC_TOKEN_TTL_SECONDS: ${DYNAMIC_TOKEN_TTL_SECONDS:-600}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      REQUIRE_ALLOWED_ORIGIN: ${REQUIRE_ALLOWED_ORIGIN:-false}
+      ENABLE_ADMIN_GIT: ${ENABLE_ADMIN_GIT:-false}
     volumes:
       - ./storage:/app/storage
       - ./data:/app/data

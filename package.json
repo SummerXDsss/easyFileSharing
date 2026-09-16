@@ -5,6 +5,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:3001": "node scripts/start-local.js --port 3001",
+    "docker:up": "node scripts/docker-up.js",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f easy-file-sharing",
     "test": "node --test test/*.test.js",
     "test:e2e": "node test/e2e-smoke.js"
   },

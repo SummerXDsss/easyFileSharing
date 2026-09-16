@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -494,7 +492,7 @@ app.use((req, res) => {
 if (require.main === module) {
   app.listen(config.port, () => {
     console.log(`${getSiteConfig().siteTitle} listening on http://localhost:${config.port}`);
-    console.log(`Default admin: ${config.adminUsername} / ${config.adminPassword}`);
+    console.log(`Admin username: ${config.adminUsername}`);
   });
 }
 

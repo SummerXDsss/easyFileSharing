@@ -17,16 +17,49 @@ TK_SECRET=another-long-random-secret
 ALLOWED_ORIGINS=https://your-domain.example
 ```
 
-3. Start the service:
+You can also use a JSON config file. Environment variables override config file values:
+
+```bash
+cp config.example.json config.json
+```
+
+```json
+{
+  "adminUsername": "admin",
+  "adminPassword": "change-me",
+  "jwtSecret": "long-random-secret",
+  "tkSecret": "another-long-random-secret"
+}
+```
+
+For Docker, mount or bake the config file into the container and set:
+
+```text
+CONFIG_FILE=/app/config.json
+```
+
+3. Start the service with Docker Compose:
 
 ```bash
 docker compose up -d --build
+```
+
+Or start it through npm:
+
+```bash
+npm run docker:up -- --port 3001 --admin-password "change-me"
 ```
 
 4. Open:
 
 ```text
 http://localhost:3000
+```
+
+If you used `--port 3001`, open:
+
+```text
+http://localhost:3001
 ```
 
 ## Volumes

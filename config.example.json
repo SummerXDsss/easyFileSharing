@@ -1,0 +1,10 @@
+{
+  "siteTitle": "Mirror Download",
+  "adminUsername": "admin",
+  "adminPassword": "change-me",
+  "jwtSecret": "change-this-jwt-secret",
+  "tkSecret": "change-this-refresh-secret",
+  "allowedOrigins": "https://example.com",
+  "requireAllowedOrigin": false,
+  "enableAdminGit": false
+}
